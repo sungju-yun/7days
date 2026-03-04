@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>7 Day Creation - Persistence Restored</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,600&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+body { margin: 0; background: #eae7df; font-family: 'Inter', sans-serif; overflow: hidden; }
+.book-wrapper { width: 94vw; max-width: 1200px; height: 86vh; margin: 5vh auto; }
+.book { width: 100%; height: 100%; display: flex; box-shadow: 0 40px 100px rgba(0,0,0,0.3); border-radius: 6px; background: #d6d0c2; overflow: hidden; position: relative; }
+
+/* 왼쪽 페이지: 화이트 & 블루 그라데이션 */
+.page.left { 
+  width: 50%; height: 100%; position: relative; 
+  background: linear-gradient(135deg, #ffffff 0%, #e3f2fd 100%); 
+  overflow: hidden; 
+}
+
+#mediaBox { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
+#mediaBox img, #mediaBox video, #mediaBox iframe { width: 100%; height: 100%; object-fit: cover; border: none; }
+
+.month-indicator {
+  position: absolute; top: 30px; left: 30px; color: #1a237e; 
+  font-family: 'Cormorant Garamond', serif; font-size: 32px; font-weight: 600; font-style: italic;
+  z-index: 20; text-shadow: 0 0 10px rgba(255,255,255,0.8);
+}
+
+.date-overlay {
+  position: absolute; left: 30px; top: 55%; transform: translateY(-50%);
+  color: #283593; font-weight: 600; font-size: 15px; line-height: 1.8; z-index: 10; pointer-events: none;
+}
+.date-overlay span { display: block; font-size: 24px; margin-bottom: 8px; color: #1565c0; }
+
+/* 오른쪽 페이지 */
+.page.right { width: 50%; height: 100%; padding: 50px; box-sizing: border-box; display: flex; flex-direction: column; background: #fffdf8; border-left: 1px solid #eee; }
+h2 { font-family: 'Cormorant Garamond', serif; font-weight: 600; font-style: italic; font-size: 32px; margin: 0 0 20px 0; border-bottom: 1px solid #ddd; padding-bottom: 10px; color: #333; }
+textarea { flex: 1; border: none; outline: none; font-size: 16px; line-height: 2.2; background: transparent; resize: none; color: #333; }
+
+/* 컨트롤 바 */
+.controls {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px;
+  background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
+  padding: 12px 20px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); z-index: 100; width: 95%; max-width: 1100px;
+}
+.control-group { display: flex; align-items: center; gap: 8px; border-right: 1px solid #ddd; padding-right: 10px; }
+.control-group:last-child { border-right: none; }
+.controls input[type="text"] { width: 200px; padding: 6px 10px; font-size: 11px; border-radius: 4px; border: 1px solid #ccc; }
+.controls button { padding: 8px 12px; border: none; border-radius: 6px; background: #222; color: white; cursor: pointer; font-size: 11px; }
+
+@media print { .controls { display: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="book-wrapper">
+  <div class="book">
+    <div class="page left">
+      <div class="month-indicator" id="monthDisplay"></div>
+      <div id="mediaBox">
+        <img id="weekImage" src="https://images.unsplash.com/photo-1464802686167-b939a67e06a1?auto=format&fit=crop&w=1200">
+      </div>
+      <div class="date-overlay" id="weekDays"></div>
+    </div>
+    <div class="page right">
+      <h2>7 Day Creation</h2>
+      <textarea id="notes" placeholder="이곳에 영감을 기록하세요..."></textarea>
+    </div>
+  </div>
+</div>
+
+<div class="controls">
+  <div class="control-group">
+    <button onclick="changeWeek(-7)">◀ 이전</button>
+    <button onclick="changeWeek(7)">다음 ▶</button>
+  </div>
+  <div class="control-group">
+    <label style="font-size:10px; font-weight:900;">YOUTUBE</label>
+    <input type="text" id="ytUrlInput" placeholder="주소 입력 후 엔터">
+    <button onclick="loadYoutube()" style="background:#cc0000;">임베드</button>
+  </div>
+  <div class="control-group">
+    <button onclick="document.getElementById('mediaUpload').click()">파일</button>
+    <input type="file" id="mediaUpload" style="display:none" accept="audio/*,video/mp4">
+    <button onclick="document.getElementById('imageUpload').click()">이미지</button>
+    <input type="file" id="imageUpload" style="display:none" accept="image/*">
+  </div>
+  <button onclick="window.print()" style="background:#666; color:white;">PDF 저장</button>
+</div>
+
+<script>
+let currentDate = new Date();
+// 월요일 기준으로 날짜 맞춤
+currentDate.setDate(currentDate.getDate() - (currentDate.getDay() === 0 ? 6 : currentDate.getDay() - 1));
+
+const mediaBox = document.getElementById("mediaBox");
+const monthDisplay = document.getElementById("monthDisplay");
+const notesTextarea = document.getElementById("notes");
+
+// 🛠 [복원] 기록 유지 핵심 로직 (LocalStorage)
+function getWeekKey() {
+  return "notes-" + currentDate.toISOString().slice(0, 10);
+}
+
+function saveNotes() {
+  localStorage.setItem(getWeekKey(), notesTextarea.value);
+}
+
+function loadNotes() {
+  const savedData = localStorage.getItem(getWeekKey());
+  notesTextarea.value = savedData || "";
+}
+
+// 주차 렌더링
+function renderWeek(){
+  const container = document.getElementById("weekDays");
+  container.innerHTML = "";
+  const tempDate = new Date(currentDate);
+  const days = ["MON","TUE","WED","THU","FRI","SAT","SUN"];
+  const monthNames = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
+  
+  monthDisplay.innerText = `${monthNames[tempDate.getMonth()]} ${tempDate.getFullYear()}`;
+
+  for(let i=0; i<7; i++){
+    container.innerHTML += `<div>${days[i]}<span>${tempDate.getDate()}</span></div>`;
+    tempDate.setDate(tempDate.getDate()+1);
+  }
+  
+  // 주차가 바뀔 때마다 해당 주차의 기록을 불러옴
+  loadNotes();
+}
+
+// 텍스트 입력할 때마다 즉시 자동 저장
+notesTextarea.addEventListener("input", saveNotes);
+
+// 주차 이동
+function changeWeek(days) {
+  currentDate.setDate(currentDate.getDate() + days);
+  renderWeek();
+}
+
+// [복원] 유튜브 ID 추출 및 Iframe 생성 로직
+function extractYoutubeId(url) {
+    const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([^"&?\/\s]{11})/;
+    const match = url.match(regex);
+    return (match && match[1]) ? match[1] : null;
+}
+
+function loadYoutube() {
+    const videoId = extractYoutubeId(document.getElementById("ytUrlInput").value.trim());
+    if (videoId) {
+        mediaBox.innerHTML = "";
+        const iframe = document.createElement("iframe");
+        iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=0&loop=1&playlist=${videoId}`;
+        iframe.setAttribute("allow", "autoplay; encrypted-media");
+        iframe.setAttribute("allowfullscreen", "true");
+        mediaBox.appendChild(iframe);
+    } else {
+        alert("올바른 유튜브 주소를 입력해주세요.");
+    }
+}
+
+// 로컬 파일 업로드
+document.getElementById("mediaUpload").addEventListener("change", function(e){
+    const file = e.target.files[0];
+    if (file) {
+        const url = URL.createObjectURL(file);
+        mediaBox.innerHTML = "";
+        if (file.type.startsWith("video/")) {
+            const video = document.createElement("video");
+            video.src = url; video.loop = true; video.autoplay = true;
+            video.style.width="100%"; video.style.height="100%"; video.style.objectFit="cover";
+            mediaBox.appendChild(video);
+        } else {
+            new Audio(url).play();
+        }
+    }
+});
+
+document.getElementById("imageUpload").addEventListener("change", function(e){
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (re) => { 
+            mediaBox.innerHTML = `<img src="${re.target.result}" style="width:100%; height:100%; object-fit:cover;">`;
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+document.getElementById("ytUrlInput").addEventListener("keypress", (e) => { if(e.key === "Enter") loadYoutube(); });
+
+// 초기 실행
+renderWeek();
+</script>
+</body>
+</html>
