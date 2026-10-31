@@ -1,0 +1,20 @@
+{
+  "name": "7days + Hermes Agent",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "containerEnv": {
+    "HERMES_HOME": "/workspaces/.hermes"
+  },
+  "remoteEnv": {
+    "PATH": "${containerEnv:PATH}:/home/vscode/.local/bin"
+  },
+  "postCreateCommand": "bash .devcontainer/install-hermes.sh",
+  "forwardPorts": [
+    8000
+  ],
+  "portsAttributes": {
+    "8000": {
+      "label": "7days preview",
+      "onAutoForward": "notify"
+    }
+  }
+}
